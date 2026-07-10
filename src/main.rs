@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::fs;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -23,6 +24,8 @@ struct File {
     completed: bool,
     extension: String,
 }
+
+fn convert_files(files: &Files) {}
 
 fn main() {
     let args = Cli::parse();
@@ -50,7 +53,7 @@ fn main() {
                 "Path: {:?} does not existing within the CWD.",
                 curr_file.path
             );
-            return;
+            continue;
         }
         files.files.push(curr_file);
     }
