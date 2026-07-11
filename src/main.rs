@@ -1,5 +1,6 @@
 use clap::Parser;
 use heic::DecoderConfig;
+use image::{ImageBuffer, Rgb};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -15,23 +16,41 @@ struct Cli {
 #[derive(Debug)]
 struct Files {
     files: Vec<File>,
-    completed: bool,
     to_extension: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct File {
     path: std::path::PathBuf,
-    completed: bool,
     extension: String,
     file_name: String,
 }
 
-fn convert_files(files: &Files) {
-    for file in &files.files {
+fn convert_files(files: &mut Files) {
+    for file in &mut files.files {
         if file.extension.to_lowercase() == "heic" {
             let data = fs::read(&file.path).unwrap();
-            let output = DecoderConfig::new().decode_request(&data).decode().unwrap();
+
+            let output = DecoderConfig::new()
+                .decode_request(&data)
+                .with_output_layout(heic::PixelLayout::Rgb8)
+                .decode()
+                .unwrap();
+
+            let img_buffer: ImageBuffer<Rgb<u8>, Vec<u8>> =
+                ImageBuffer::from_raw(output.width, output.height, output.data)
+                    .ok_or("Failed to convert image to image buffer.")
+                    .unwrap();
+
+            image::save_buffer(
+                format!("{}.{}", file.file_name, files.to_extension),
+                &img_buffer,
+                output.width,
+                output.height,
+                image::ExtendedColorType::Rgb8,
+            )
+            .unwrap();
+            println!("Saved new file: {}.{}", file.file_name, files.to_extension);
         }
     }
 }
@@ -41,7 +60,6 @@ fn main() {
 
     let mut files = Files {
         files: Vec::<File>::new(),
-        completed: false,
         to_extension: args.to,
     };
 
@@ -63,10 +81,10 @@ fn main() {
 
         let curr_file = File {
             path: path,
-            completed: false,
             extension: extension,
             file_name: file_name,
         };
+
         if !curr_file.path.exists() {
             eprintln!(
                 "Path: {:?} does not existing within the CWD.",
@@ -77,5 +95,6 @@ fn main() {
         files.files.push(curr_file);
     }
     println!("All collected files: {:?}", files);
+    convert_files(&mut files);
     return;
 }
