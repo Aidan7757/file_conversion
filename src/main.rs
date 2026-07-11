@@ -1,16 +1,20 @@
 use clap::Parser;
 use heic::DecoderConfig;
-use image::{ImageBuffer, Rgb};
+use image::{ImageBuffer, ImageReader, Rgb};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 struct Cli {
-    #[arg(required = true, value_name = "FILE")]
+    #[arg(value_name = "FILE")]
     files: Vec<PathBuf>,
 
-    #[arg(required = true, short, long, value_name = "CONVERSION_TYPE")]
+    // #[arg(value_name = "DIRECTORY")]
+    // directory: String,
+    #[arg(short, long, value_name = "CONVERSION_TYPE")]
     to: String,
+    // #[arg(short, long, value_name = "COMPRESSION")]
+    // compression: bool,
 }
 
 #[derive(Debug)]
@@ -50,6 +54,18 @@ fn convert_files(files: &mut Files) {
                 image::ExtendedColorType::Rgb8,
             )
             .unwrap();
+            println!("Saved new file: {}.{}", file.file_name, files.to_extension);
+        } else {
+            let data = fs::read(&file.path).unwrap();
+
+            let dynamic_img = ImageReader::new(std::io::Cursor::new(&data))
+                .with_guessed_format()
+                .unwrap()
+                .decode()
+                .unwrap();
+
+            let save_path = format!("{}.{}", file.file_name, files.to_extension);
+            dynamic_img.save(&save_path).unwrap();
             println!("Saved new file: {}.{}", file.file_name, files.to_extension);
         }
     }
@@ -94,7 +110,6 @@ fn main() {
         }
         files.files.push(curr_file);
     }
-    println!("All collected files: {:?}", files);
     convert_files(&mut files);
     return;
 }
